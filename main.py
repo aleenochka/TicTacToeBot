@@ -1,11 +1,14 @@
+import os
+
 import telebot
+from dotenv import load_dotenv
 
 import game_manager
-from auth import token
 from telebot.types import Message
-
 # Авторизация и получение переменной для работы с ботом
-bot = telebot.TeleBot(token.getToken())
+load_dotenv()
+
+bot = telebot.TeleBot(os.getenv('TOKEN'))
 
 # Вынесенный из функции для читаемости текст одной из команд
 usageInstruction = "Инструкция по использованию:\n" + \
@@ -23,7 +26,7 @@ def send_welcome(message):
 def send_welcome(message: Message):
     game_manager.processANewGameRequest(bot, message)
 
-# Обработчик команды "leavegame" в приватных чатах и группах
+# Обработчик команды "leavegame" в приватнмнеых чатах и группах
 @bot.message_handler(commands=['leavegame'], chat_types=['private', 'group'])
 def send_welcome(message: Message):
     game_manager.processLeaveGameRequest(bot, message)

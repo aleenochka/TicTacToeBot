@@ -1,7 +1,11 @@
+from sqlalchemy.orm import Session
 import game
 import random
 from telebot.types import Message
 from telebot import TeleBot
+
+from core.db import get_db
+from core.db_helper import update_user_stats
 
 queueChatIds: list[int] = []
 activeGames: list[game.Game] = []
@@ -55,7 +59,7 @@ def startNewGame(b: TeleBot, id1, id2):
 
     displayStateAskAndStopAtWin(b, newGame)
 
-# Запрос на совершение хода
+
 def processAMoveRequest(b: TeleBot, message: Message, text=None):
     chatId = message.chat.id
     game = getCurrentPlayerGame(chatId)
@@ -110,26 +114,37 @@ def performNextMovement(b: TeleBot, game: game.Game, coords):
     maybeADraw = game.checkADraw()
     displayStateAskAndStopAtWin(b, game, winner=maybeWinner, draw=maybeADraw)
 
+
+
 # Запрос покинуть игру
-def processLeaveGameRequest(b: TeleBot, message: Message):
+def processLeaveGameRequest(b: TeleBot, message: Message, db: Session = None):
+    if db is None:
+        db = next(get_db())  # Получаем сессию, если она не была передана
+
     chatId = message.chat.id
-    game = getCurrentPlayerGame(chatId)
+    game = getCurrentPlayerGame(chatId)  # Получаем текущую игру игрока
     if not game:
-        if chatId in queueChatIds:
-            queueChatIds.remove(chatId)
+        if chatId in queueChatIds:  # Игрок в очереди
+            queueChatIds.remove(chatId)  # Убираем игрока из очереди ожидания
             b.send_message(chatId, 'Вы успешно покинули очередь ожидания игры')
             return
         else:
-            b.send_message(chatId, 'Вы уже не в игре!')
+            b.send_message(chatId, 'Вы уже не в игре!')  # Игрок не в игре
             return
 
+    # Если игра есть, обрабатываем выход
     otherP = game.p1
-    if otherP.pId == chatId:
+    if otherP.pId == chatId:  # Определяем другого игрока, если текущий игрок — первый
         otherP = game.p2
 
+    # Обновление статистики пользователей
+    update_user_stats(chatId, 0, 1, 0, db)  # Текущий игрок проиграл
+    update_user_stats(otherP.pId, 1, 0, 0, db)  # Противник выиграл
+
+    # Отправляем сообщение об окончании игры
     b.send_message(chatId, 'Игра преждевременно завершена')
     b.send_message(otherP.pId, 'Противник преждевременно завершил игру')
-    activeGames.remove(game)
+    activeGames.remove(game)  # Удаляем игру из активных
 
 # Вспомогательная функция получения текущей игры для пользователя, если такая есть
 def getCurrentPlayerGame(chatId):
