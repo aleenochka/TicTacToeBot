@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: python_app
+    restart: always
+    depends_on:
+      - postgres
+    networks:
+      - network
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+
+  postgres:
+    image: postgres:latest
+    container_name: postgres_container
+    restart: always
+    ports:
+      - "5401:5432"
+    environment:
+      POSTGRES_USER: main
+      POSTGRES_PASSWORD: "123456"
+      POSTGRES_DB: maindb
+    networks:
+      - network
+    volumes:
+      - postgres_volume:/var/lib/postgresql/data
+
+  pgadmin:
+    image: dpage/pgadmin4
+    restart: always
+    ports:
+      - "5500:80"
+    networks:
+      - network
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "example@gmail.com"
+      PGADMIN_DEFAULT_PASSWORD: "123456"
+    container_name: pgadmin_container
+    volumes:
+      - pgadmin_volume:/var/lib/pgadmin/
+
+networks:
+  network:
+
+volumes:
+  postgres_volume:
+  pgadmin_volume:
